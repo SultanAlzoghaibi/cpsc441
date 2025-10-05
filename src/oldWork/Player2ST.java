@@ -1,3 +1,4 @@
+/*
 package oldWork;
 
 import javafx.application.Application;
@@ -113,12 +114,14 @@ public class Player2ST extends Application {
         startCheckers.setStyle("-fx-font-size: 18px; -fx-padding: 10px 20px;");
         startTictactoe.setStyle("-fx-font-size: 18px; -fx-padding: 10px 20px;");
         startConnect4.setStyle("-fx-font-size: 18px; -fx-padding: 10px 20px;");
-       /* startb00 = new Button("Start b00");
+       */
+/* startb00 = new Button("Start b00");
 
         startb00.setOnAction(e -> {
             System.out.println("YOU PRESSED THE BUTTON");
             hnadleB00Click();
-        });*/
+        });*//*
+
 
         startChess.setOnAction(e -> {
             System.out.println("YOU PRESSED CHESS");
@@ -436,9 +439,11 @@ public class Player2ST extends Application {
         }
     }
 
-    /**
+    */
+/**
      * Connect to the server
-     */
+     *//*
+
 
 
     public void connectToSearchServer() {
@@ -515,9 +520,11 @@ public class Player2ST extends Application {
         });
     }
 
-    /**
+    */
+/**
      * The networking client side
-     */
+     *//*
+
     private class CscToGameServer {
         private Socket gameSocket;
         private Socket chatSocket;
@@ -727,4 +734,4 @@ public class Player2ST extends Application {
     public static void main(String[] args) {
         launch(args);
     }
-}
+}*/

@@ -40,6 +40,7 @@ public class Server {
                 Socket s = ss.accept();
                 numPlayers++;
                 chatConnections = new ServerSideConnection[numPlayers];
+                System.out.println("new connection");
 
             }
             System.out.println("3 players reach no longer accepting chatters");
@@ -88,11 +89,11 @@ public class Server {
 
     }
 
-    }
-
-
     public static void main(String[] args) {
+        Server s = new Server();
+        s.acceptConnections();
 
 
     }
 }
+
