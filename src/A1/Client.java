@@ -44,9 +44,12 @@ public class Client {
                 Scanner sc = new Scanner(System.in);
                 String name = sc.nextLine();
                 sendMessage(name);
-
+                String msg;
                 while(true){
-
+                    System.out.print("send next message: ");
+                    msg = sc.nextLine();
+                    sendMessage(msg);
+                    System.out.println(listenForChats());
 
 
                 }

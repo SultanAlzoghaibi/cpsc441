@@ -90,19 +90,22 @@ public class Server {
                 nameToSsc.put(chatterName, this) ;
                 ClientSession seshLog = new ClientSession(LocalDateTime.now(), null );
                 clientSessionLogs.put(chatterName, seshLog);
-                String message;
+                String msg;
                 while (true) {
 
                     //todo: add chatting logic?
-                    //todo: file path system
-                    message = listenForChats();
-                    sendMessage("ACK: " + message);
-                    if (message.equals("exit")) {
+
+                    msg = listenForChats();
+                    if (msg.equals("exit")) {
                         numPlayers--;
                         sendMessage("exiting server");
                         clientSessionLogs.get(chatterName).setEnd(LocalDateTime.now());
-
                         break;
+                    } else if (msg.equals("list")) {
+                        sendMessage("input file list here");
+                        //todo: file path system
+                    } else {
+                        sendMessage("ACK: " + msg);
                     }
 
 
