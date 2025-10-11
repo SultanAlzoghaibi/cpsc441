@@ -1,8 +1,5 @@
 package A1;
 
-
-import oldWork.Player;
-
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.DataInputStream;
@@ -10,6 +7,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.Scanner;
 
 public class Client {
 
@@ -42,11 +40,45 @@ public class Client {
                 dataIn = new DataInputStream(socket.getInputStream());
                 dataOut = new DataOutputStream(socket.getOutputStream());
                 System.out.println("Connected to Server");
+                System.out.println(  listenForChats());
+                Scanner sc = new Scanner(System.in);
+                String name = sc.nextLine();
+                sendMessage(name);
+
+                while(true){
+
+
+
+                }
             } catch (IOException e) {
                 System.out.println("Error creating socket in CSC constructor");
                 e.printStackTrace();
             }
+
         }
+        public void sendMessage(String message) {
+            try{
+                dataOut.writeUTF(message); // this is sending to server an int
+                dataOut.flush();
+            } catch (IOException e) {
+                System.out.println("IOException in AskForName()");
+            }
+
+        }
+
+        public String listenForChats(){
+            String message = null;
+            try {
+                message = dataIn.readUTF();
+
+            }catch (IOException e) {
+                System.out.println("IOException in listenForName()");
+            }
+            return message;
+        }
+
+
+
 
 
     }

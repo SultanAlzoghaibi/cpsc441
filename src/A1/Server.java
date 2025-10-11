@@ -1,26 +1,30 @@
 package A1;
 
 
-import oldWork.GameServer;
-
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+
 
 
 public class Server {
     private ServerSocket ss;
     private int numPlayers;
+    private HashMap<String, ServerSideConnection> nameToSsc;
 
-    private ServerSideConnection[] chatConnections;
-
-
+    // Store name -> [startTime, endTime]
+    private HashMap<String, ClientSession> clientSessionLogs = new HashMap<>();
     public Server() {
         System.out.println("--chat server--");
         numPlayers = 0;
+        nameToSsc = new HashMap<>();
+        clientSessionLogs = new HashMap<>();
 
         try {
             ss = new ServerSocket(30001);
@@ -39,8 +43,10 @@ public class Server {
             while (numPlayers < 3) {
                 Socket s = ss.accept();
                 numPlayers++;
-                chatConnections = new ServerSideConnection[numPlayers];
                 System.out.println("new connection");
+                ServerSideConnection ssc = new ServerSideConnection(s, numPlayers);
+                Thread t = new Thread(ssc); //what ever is the in the ssc run in the new "THREAD"
+                t.start();
 
             }
             System.out.println("3 players reach no longer accepting chatters");
@@ -59,6 +65,7 @@ public class Server {
         private DataInputStream dataIn;
         private DataOutputStream dataOut;
         private int chatterID;
+        private String chatterName;
 
         public ServerSideConnection(Socket s, int id) {
             this.socket = s;
@@ -74,7 +81,29 @@ public class Server {
         }
         public void run() {
             try {
+                sendMessage("plz input ur name: ");
+                chatterName = listenForChats();
+                while (nameToSsc.containsKey(chatterName) || chatterName == null) {
+                    System.out.println("that name is already in use or invalid, try again");
+                    chatterName = listenForChats();
+                }
+                nameToSsc.put(chatterName, this) ;
+                ClientSession seshLog = new ClientSession(LocalDateTime.now(), null );
+                clientSessionLogs.put(chatterName, seshLog);
+                String message;
                 while (true) {
+
+                    //todo: add chatting logic?
+                    //todo: file path system
+                    message = listenForChats();
+                    sendMessage("ACK: " + message);
+                    if (message.equals("exit")) {
+                        numPlayers--;
+                        sendMessage("exiting server");
+                        clientSessionLogs.get(chatterName).setEnd(LocalDateTime.now());
+
+                        break;
+                    }
 
 
                 }
@@ -84,8 +113,46 @@ public class Server {
                 e.printStackTrace();
                 System.out.println("Server couldn't start server, Run()");
 
+            } finally { //always runs
+                close();
             }
         }
+
+        public void sendMessage(String message) {
+            try{
+                dataOut.writeUTF(message); // this is sending to server an int
+                dataOut.flush();
+            } catch (IOException e) {
+                System.out.println("IOException in AskForName()");
+            }
+
+        }
+        public String listenForChats(){
+            String msg = null;
+            try {
+                msg = dataIn.readUTF();
+
+            }catch (IOException e) {
+                System.out.println("IOException in listenForName()");
+            }
+            System.out.println(msg);
+            return msg;
+        }
+
+        public void close() {
+            try {
+                if (dataIn != null) dataIn.close();
+                if (dataOut != null) dataOut.close();
+                if (socket != null && !socket.isClosed()) socket.close();
+                System.out.println("Closed connection for chatter ID: " + chatterID);
+            } catch (IOException e) {
+                System.out.println("Error closing connection for chatter ID: " + chatterID);
+                e.printStackTrace();
+            }
+        }
+
+
+
 
     }
 
