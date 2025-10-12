@@ -3,21 +3,20 @@ package A1;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-
+import java.util.HashSet;
 
 
 public class Server {
     private ServerSocket ss;
     private int numPlayers;
     private HashMap<String, ServerSideConnection> nameToSsc;
-
+    private HashSet<String> filesSet = new HashSet<>();
     // Store name -> [startTime, endTime]
     private HashMap<String, ClientSession> clientSessionLogs = new HashMap<>();
     public Server() {
@@ -25,6 +24,7 @@ public class Server {
         numPlayers = 0;
         nameToSsc = new HashMap<>();
         clientSessionLogs = new HashMap<>();
+        initFilesSet();
 
         try {
             ss = new ServerSocket(30001);
@@ -33,6 +33,21 @@ public class Server {
             System.out.println("Server couldn't start server");
             e.printStackTrace();
 
+        }
+    }
+
+    public void initFilesSet() {
+        File folder = new File("ServerFiles"); // Folder path relative to project root
+        File[] files = folder.listFiles();
+
+        if (files != null) {
+            for (File file : files) {
+                if (file.isFile()) {
+                    filesSet.add(file.getName());
+                }
+            }
+        } else {
+            System.out.println("Warning: ServerFiles folder not found or is empty.");
         }
     }
 
@@ -91,7 +106,8 @@ public class Server {
                 ClientSession seshLog = new ClientSession(LocalDateTime.now(), null );
                 clientSessionLogs.put(chatterName, seshLog);
                 String msg;
-                while (true) {
+                boolean stayInLoop = true;
+                while (stayInLoop) {
 
                     //todo: add chatting logic?
 
@@ -102,13 +118,29 @@ public class Server {
                         clientSessionLogs.get(chatterName).setEnd(LocalDateTime.now());
                         break;
                     } else if (msg.equals("list")) {
-                        sendMessage("input file list here");
+                        while (true) {
+                            sendMessage(listFiles() +
+                                    "\n type \"exit\" to exit the server or \"leave\" to leave the list file menu");
+                            msg = listenForChats();
+                            if (msg.equals("leave")) {
+                                break;
+                            }
+                            else if (msg.equals("exit")) {
+                                numPlayers--;
+                                sendMessage("exiting server");
+                                clientSessionLogs.get(chatterName).setEnd(LocalDateTime.now());
+                                stayInLoop = false;
+                                break;
+                            } else if (filesSet.contains(msg)) {
+
+
+
+                            }
+                        }
                         //todo: file path system
                     } else {
                         sendMessage("ACK: " + msg);
                     }
-
-
 
                 }
 
@@ -120,6 +152,22 @@ public class Server {
             } finally { //always runs
                 close();
             }
+        }
+        f
+
+        public String listFiles() {
+            if (filesSet == null || filesSet.isEmpty()) {
+                System.out.println("Repo is empty");
+                return "ServerFiles Repo is empty";
+            }
+
+            StringBuilder fileListStr = new StringBuilder("list:\n");
+
+            for (String fileName : filesSet) {
+                fileListStr.append("- ").append(fileName).append("\n");
+            }
+
+            return fileListStr.toString();
         }
 
         public void sendMessage(String message) {
