@@ -5,15 +5,19 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Random;
 
 public class Server {
     int numberOfClients = 0;
+
     DatagramSocket serverSocket;
     int BufferLength = 1024;
     int maxNumberOfClients = 4;
 
 
-    int[] arrClientPorts = new int[maxNumberOfClients];
+    HashMap<Integer, Integer> ClientIDtoPort = new HashMap<>();
 
 
     public Server() throws IOException {
@@ -47,9 +51,9 @@ public class Server {
 
                 InetAddress address = packet.getAddress();
                 int Clinetport = packet.getPort();
-
-                arrClientPorts[numberOfClients] = Clinetport;
-
+                Random rand = new Random();
+                int ClientID = rand.nextInt((int)(Math.pow(2, 32)));
+                ClientIDtoPort.put(ClientID, Clinetport);
 
                 System.out.println("client Port: " + Clinetport);
                 ServerSideConnection ssc = new ServerSideConnection(serverSocket, numberOfClients);
@@ -88,9 +92,11 @@ public class Server {
 
 
     public static void main(String[] args) throws IOException {
-
+        int[] arr = new int[3];
+        System.out.printf(String.valueOf(arr[3]));
         Server server = new Server();
         server.acceptConnections();
+
 
 
     }

@@ -7,11 +7,13 @@ public class Client {
     private ClientToServer csc;
     private DatagramSocket socket;
     public Client() {
+
     }
 
     public void connectToServer(){
         csc = new ClientToServer();
     }
+
     public void connectToOtherClient(){
         csc = new ClientToServer();
     }
