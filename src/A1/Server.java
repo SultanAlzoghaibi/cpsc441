@@ -1,10 +1,7 @@
 package A1;
 
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.time.LocalDateTime;
@@ -25,6 +22,8 @@ public class Server {
         nameToSsc = new HashMap<>();
         clientSessionLogs = new HashMap<>();
         initFilesSet();
+        System.out.println("init");
+        System.out.println(filesSet.toString());
 
         try {
             ss = new ServerSocket(30001);
@@ -37,7 +36,7 @@ public class Server {
     }
 
     public void initFilesSet() {
-        File folder = new File("ServerFiles"); // Folder path relative to project root
+        File folder = new File("src/A1/ServerFiles"); // Folder path relative to project root
         File[] files = folder.listFiles();
 
         if (files != null) {
@@ -55,16 +54,19 @@ public class Server {
         try {
             System.out.println("--waiting connections--");
 
-            while (numPlayers < 3) {
+            while (true) {
                 Socket s = ss.accept();
                 numPlayers++;
+                if (numPlayers > 3) {
+                    System.out.println("Too many connections in server");
+                    continue;
+                }
                 System.out.println("new connection");
                 ServerSideConnection ssc = new ServerSideConnection(s, numPlayers);
                 Thread t = new Thread(ssc); //what ever is the in the ssc run in the new "THREAD"
                 t.start();
 
             }
-            System.out.println("3 players reach no longer accepting chatters");
         }
         catch (Exception e) {
             e.printStackTrace();
@@ -98,10 +100,14 @@ public class Server {
             try {
                 sendMessage("plz input ur name: ");
                 chatterName = listenForChats();
+                System.out.println("nameToSsc: " + nameToSsc.keySet().toString());
+
                 while (nameToSsc.containsKey(chatterName) || chatterName == null) {
                     System.out.println("that name is already in use or invalid, try again");
+                    sendMessage("name already in use or invalid, try again");
                     chatterName = listenForChats();
                 }
+                sendMessage("VALID NAME");
                 nameToSsc.put(chatterName, this) ;
                 ClientSession seshLog = new ClientSession(LocalDateTime.now(), null );
                 clientSessionLogs.put(chatterName, seshLog);
@@ -109,20 +115,24 @@ public class Server {
                 boolean stayInLoop = true;
                 while (stayInLoop) {
 
-                    //todo: add chatting logic?
-
                     msg = listenForChats();
+
                     if (msg.equals("exit")) {
                         numPlayers--;
                         sendMessage("exiting server");
                         clientSessionLogs.get(chatterName).setEnd(LocalDateTime.now());
+
                         break;
                     } else if (msg.equals("list")) {
+                        String errorMsg = "";
                         while (true) {
-                            sendMessage(listFiles() +
+
+                            sendMessage(errorMsg + listFiles() +
                                     "\n type \"exit\" to exit the server or \"leave\" to leave the list file menu");
                             msg = listenForChats();
                             if (msg.equals("leave")) {
+                                sendMessage("left file menu");
+
                                 break;
                             }
                             else if (msg.equals("exit")) {
@@ -132,10 +142,10 @@ public class Server {
                                 stayInLoop = false;
                                 break;
                             } else if (filesSet.contains(msg)) {
-
-
-
+                                sendFile(msg);
+                                break;
                             }
+                            errorMsg = " ERROR file not in the list! \n";
                         }
                         //todo: file path system
                     } else {
@@ -153,7 +163,40 @@ public class Server {
                 close();
             }
         }
-        f
+
+        public void sendFile(String fileName) {
+            File file = new File("src/A1/ServerFiles/" + fileName);
+
+            try {
+                if (!file.exists() || !file.isFile()) {
+                    dataOut.writeUTF("ERROR: File not found");
+                    dataOut.flush();
+                    return;
+                }
+                sendMessage("FILE_RECEIVE_MODE");
+                dataOut.writeUTF(fileName);
+
+                long fileSize = file.length();
+                dataOut.writeLong(fileSize);
+
+
+                FileInputStream fileIn = new FileInputStream(file);
+                byte[] buffer = new byte[32 * 1024]; // 32 KB
+                int bytesRead;
+
+                while ((bytesRead = fileIn.read(buffer)) != -1) {
+                    dataOut.write(buffer, 0, bytesRead);
+                }
+                dataOut.flush();
+                fileIn.close();
+                System.out.println("File sent: " + fileName);
+
+            } catch (IOException e) {
+                System.out.println("IOException in sendFile()");
+                e.printStackTrace();
+            }
+        }
+
 
         public String listFiles() {
             if (filesSet == null || filesSet.isEmpty()) {
@@ -172,7 +215,7 @@ public class Server {
 
         public void sendMessage(String message) {
             try{
-                dataOut.writeUTF(message); // this is sending to server an int
+                dataOut.writeUTF(message); // this is sending to server an string
                 dataOut.flush();
             } catch (IOException e) {
                 System.out.println("IOException in AskForName()");
@@ -182,12 +225,14 @@ public class Server {
         public String listenForChats(){
             String msg = null;
             try {
+
                 msg = dataIn.readUTF();
 
             }catch (IOException e) {
                 System.out.println("IOException in listenForName()");
             }
-            System.out.println(msg);
+            System.out.println("Revceived msg: "+ msg + " from " + chatterName);
+
             return msg;
         }
 
@@ -196,7 +241,9 @@ public class Server {
                 if (dataIn != null) dataIn.close();
                 if (dataOut != null) dataOut.close();
                 if (socket != null && !socket.isClosed()) socket.close();
+                nameToSsc.remove(chatterName);
                 System.out.println("Closed connection for chatter ID: " + chatterID);
+
             } catch (IOException e) {
                 System.out.println("Error closing connection for chatter ID: " + chatterID);
                 e.printStackTrace();
@@ -211,6 +258,7 @@ public class Server {
     public static void main(String[] args) {
         Server s = new Server();
         s.acceptConnections();
+        System.out.println(s.clientSessionLogs);
 
 
     }
