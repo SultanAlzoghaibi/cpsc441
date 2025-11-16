@@ -52,6 +52,8 @@ public class Client {
                 System.out.println("[Client] Sent packet: " + message);
 
                 while(true){
+                    receiveClientList();
+
 
                 }
 
@@ -59,6 +61,27 @@ public class Client {
                 throw new RuntimeException(e);
             }
         }
+
+        public void receiveClientList() {
+            try {
+                byte[] buffer = new byte[1024];
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+
+                System.out.println("Waiting for client list from server...");
+                socket.receive(packet);  // 'socket' is your DatagramSocket
+
+                String message = new String(packet.getData(), 0, packet.getLength());
+                System.out.println("\n---- Client List Received ----");
+                System.out.println(message);
+                System.out.println("-----------------------------\n");
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                System.out.println("Error receiving client list from server.");
+            }
+        }
+
+
     }
 
 
