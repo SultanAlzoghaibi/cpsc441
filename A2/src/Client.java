@@ -1,11 +1,14 @@
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.util.Random;
 
 public class Client {
 
     private ClientToServer csc;
     private DatagramSocket socket;
+
+
     public Client() {
 
     }
@@ -35,25 +38,31 @@ public class Client {
     private class ClientToServer{
         private DatagramSocket socket;
         private InetAddress serverAddress;
-        private int serverPort = 7070;
+        private int serverConnectionPort = 7070;
+        private int serverReqSendingPort;
 
         public ClientToServer() {
             this.socket = socket;
+
             try{
                 socket = new DatagramSocket();
                 serverAddress = InetAddress.getByName("localhost");
-                System.out.println("[Client] Connected to server on port " + serverPort);
+                System.out.println("[Client] Connected to server on port " + serverConnectionPort);
+                Random rand = new Random();
+                int seqNum = rand.nextInt(9999);
 
-                String message = "Hello server! This is the client.";
+                String message = "REGISTER:SEQ:" + seqNum;
+
                 byte[] sendData = message.getBytes();
 
-                DatagramPacket packet = new DatagramPacket(sendData, sendData.length, serverAddress, serverPort);
+                DatagramPacket packet = new DatagramPacket(sendData, sendData.length, serverAddress, serverConnectionPort);
                 socket.send(packet);
                 System.out.println("[Client] Sent packet: " + message);
+                serverReqSendingPort = receivePortNumber();
+
 
                 while(true){
-                    receiveClientList();
-
+                    receiveReliable();
 
                 }
 
@@ -62,22 +71,66 @@ public class Client {
             }
         }
 
-        public void receiveClientList() {
+        public int receivePortNumber() {
             try {
                 byte[] buffer = new byte[1024];
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 
-                System.out.println("Waiting for client list from server...");
-                socket.receive(packet);  // 'socket' is your DatagramSocket
+                // Wait for server to send: CHAT_PORT:xxxx
+                socket.receive(packet);
 
-                String message = new String(packet.getData(), 0, packet.getLength());
-                System.out.println("\n---- Client List Received ----");
-                System.out.println(message);
-                System.out.println("-----------------------------\n");
+                String msg = new String(packet.getData(), 0, packet.getLength());
+                System.out.println("[Client] Received: " + msg);
+
+                if (!msg.startsWith("CHAT_PORT:")) {
+                    System.out.println("[Client] ERROR: Expected CHAT_PORT message!");
+                    return -1;
+                }
+
+                // Extract the port number
+                int port = Integer.parseInt(msg.split(":")[1]);
+
+                System.out.println("[Client] Chat port from server = " + port);
+
+                return port;
 
             } catch (Exception e) {
                 e.printStackTrace();
-                System.out.println("Error receiving client list from server.");
+                return -1;
+            }
+        }
+
+
+
+        public void receiveReliable() {
+            try {
+                byte[] buffer = new byte[1024];
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+
+                // Wait for message from server
+                socket.receive(packet);
+
+                // Extract message
+                String msg = new String(packet.getData(), 0, packet.getLength());
+                System.out.println("[Client] Received: " + msg);
+
+                // ==== SEND ACK BACK ====
+                String ack = "ACK:" + msg;
+                byte[] ackData = ack.getBytes();
+
+                DatagramPacket ackPacket = new DatagramPacket(
+                        ackData,
+                        ackData.length,
+                        packet.getAddress(),
+                        packet.getPort()
+                );
+
+                socket.send(ackPacket);
+                System.out.println("[Client] Sent ACK: " + ack);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                System.out.println("[Client] Error receiving message.");
             }
         }
 
