@@ -87,7 +87,6 @@ public class Server {
         }
 
         public void run() {
-            System.out.printf("Server starting on port: %d\n", serverSocket.getLocalPort());
             Random rand = new Random();
             int portNum = rand.nextInt(10000) + 10000;
             try {
@@ -103,11 +102,108 @@ public class Server {
                 return;
             }
 
+            while (true) {
+                String msg = "Hello!";
+                sendReliableToClient(socket, address, clientPort, msg, seqNum);
+                receiveClientMessageAndAck( socket);
+                seqNum++;  // MUST increment by 1
 
+
+            }
             //sendClientListOfClients(address, clientID);
 
-
         }
+
+        public boolean sendReliableToClient(DatagramSocket socket, InetAddress clientAddress, int clientPort, String body, int seqNum) {
+            try {
+                String msg = body + ":SEQ:" + seqNum;
+                byte[] data = msg.getBytes();
+
+                DatagramPacket packet = new DatagramPacket(
+                        data, data.length,
+                        clientAddress, clientPort
+                );
+
+                for (int attempt = 1; attempt <= 3; attempt++) {
+                    socket.send(packet);
+                    System.out.println("[Server] Sent: " + msg + " (attempt " + attempt + ")");
+
+                    // wait for ACK
+                    byte[] buffer = new byte[1024];
+                    DatagramPacket ackPacket = new DatagramPacket(buffer, buffer.length);
+                    socket.setSoTimeout(2000);
+
+                    try {
+                        socket.receive(ackPacket);
+                        String ackMsg = new String(ackPacket.getData(), 0, ackPacket.getLength());
+                        System.out.println("[Server] Received ACK: " + ackMsg);
+
+                        if (!ackMsg.startsWith("ACK:SEQ:"))
+                            continue;
+
+                        int ackSeq = Integer.parseInt(ackMsg.split(":")[2]);
+
+                        if (ackSeq == seqNum + 1) {
+                            System.out.println("[Server] Correct ACK received");
+                            return true;
+                        }
+                        else {
+                            System.out.println("[Server] Wrong ACK: expected " + (seqNum+1) + " got " + ackSeq);
+                        }
+
+                    } catch (SocketTimeoutException e) {
+                        System.out.println("[Server] Timeout waiting for ACK… retrying");
+                    }
+                }
+
+                System.out.println("[Server] FAILED to deliver reliable message");
+                return false;
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                return false;
+            }
+        }
+
+
+        public void receiveClientMessageAndAck(DatagramSocket socket) {
+            try {
+                byte[] buffer = new byte[1024];
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+
+                socket.receive(packet);
+                String msg = new String(packet.getData(), 0, packet.getLength());
+
+                System.out.println("[Server] Received: " + msg);
+
+                // Parse sequence number
+                if (!msg.contains("SEQ:")) {
+                    System.out.println("[Server] ERROR: no seq");
+                    return;
+                }
+
+                int seq = Integer.parseInt(msg.split("SEQ:")[1].trim());
+
+                // Build ACK
+                int ackSeq = seq + 1;
+                String ack = "ACK:SEQ:" + ackSeq;
+
+                DatagramPacket ackPacket = new DatagramPacket(
+                        ack.getBytes(),
+                        ack.length(),
+                        packet.getAddress(),
+                        packet.getPort()
+                );
+
+                socket.send(ackPacket);
+                System.out.println("[Server] Sent ACK:SEQ:" + ackSeq);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+
         public boolean receiveNewSocketACK(DatagramSocket socket, int seqNum) {
             try {
                 byte[] buffer = new byte[BufferLength];
