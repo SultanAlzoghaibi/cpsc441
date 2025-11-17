@@ -23,10 +23,14 @@ public class Server {
 
         } catch(Exception e){
             System.out.printf("Server could not be started");
+            System.exit(1);
         }
 
 
 
+    }
+    public HashMap<Integer, Integer> getClientIDtoPort(){
+        return ClientIDtoPort;
     }
 
     public void acceptConnections(){
@@ -77,6 +81,7 @@ public class Server {
 
 
 
+
         public ServerSideConnection(DatagramSocket s, int id, InetAddress address, int clientPort) {
             this.socket = s;
             chatterID = id;
@@ -110,7 +115,19 @@ public class Server {
                     continue;
                 }
                 System.out.println("they got out msg");
-                receiveClientMessageAndAck(socket);
+                String receiveMsg = receiveClientMessageAndAck(socket);
+                System.out.println("[Server] Received: " + receiveMsg);
+                assert receiveMsg != null;
+                ServerCommands.handleCommand(
+                        receiveMsg,
+                        getClientIDtoPort(),
+                        this::sendReliableToClient, // <-- method reference to pass the function
+                        socket,
+                        address,
+                        clientPort
+                );
+
+
                 seqNum++;  // MUST increment by 1
 
             }
@@ -170,7 +187,7 @@ public class Server {
         }
 
 
-        public void receiveClientMessageAndAck(DatagramSocket socket) {
+        public String receiveClientMessageAndAck(DatagramSocket socket) {
             try {
                 byte[] buffer = new byte[1024];
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
@@ -178,12 +195,11 @@ public class Server {
                 socket.receive(packet);
                 String msg = new String(packet.getData(), 0, packet.getLength());
 
-                System.out.println("[Server] Received: " + msg);
 
                 // Parse sequence number
                 if (!msg.contains("SEQ:")) {
                     System.out.println("[Server] ERROR: no seq");
-                    return;
+                    return "ERROR: no seq";
                 }
 
                 int seq = Integer.parseInt(msg.split("SEQ:")[1].trim());
@@ -201,10 +217,11 @@ public class Server {
 
                 socket.send(ackPacket);
                 System.out.println("[Server] Sent ACK:SEQ:" + ackSeq);
-
+                return msg;
             } catch (Exception e) {
                 e.printStackTrace();
             }
+            return null;
         }
 
 

@@ -41,11 +41,14 @@ public class Client {
         private DatagramSocket ServerReqsocket;
         private InetAddress serverAddress;
         private int serverConnectionPort = 7070;
+        private DatagramSocket ServerNewChatListnerSocket;
+
 
         public ClientToServer() {
 
             try{
                 ServerConnectsocket = new DatagramSocket();
+
                 serverAddress = InetAddress.getByName("localhost");
                 System.out.println("[Client] Connected to server on port " + serverConnectionPort);
                 Random rand = new Random();
