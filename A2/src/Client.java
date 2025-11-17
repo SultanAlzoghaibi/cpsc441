@@ -59,10 +59,10 @@ public class Client {
                 socket.send(packet);
                 System.out.println("[Client] Sent packet: " + message);
                 serverReqSendingPort = receivePortNumber();
-
+                System.out.println("serverReqSendingPort: "+ serverReqSendingPort);
 
                 while(true){
-                    receiveReliable();
+
 
                 }
 
@@ -71,66 +71,47 @@ public class Client {
             }
         }
 
+
+
         public int receivePortNumber() {
             try {
                 byte[] buffer = new byte[1024];
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 
-                // Wait for server to send: CHAT_PORT:xxxx
                 socket.receive(packet);
 
                 String msg = new String(packet.getData(), 0, packet.getLength());
                 System.out.println("[Client] Received: " + msg);
 
                 if (!msg.startsWith("CHAT_PORT:")) {
-                    System.out.println("[Client] ERROR: Expected CHAT_PORT message!");
+                    System.out.println("[Client] ERROR: expected CHAT_PORT");
                     return -1;
                 }
 
-                // Extract the port number
-                int port = Integer.parseInt(msg.split(":")[1]);
+                String[] parts = msg.split(":");
+                int port = Integer.parseInt(parts[1]);
+                int seq = Integer.parseInt(parts[3]);
 
-                System.out.println("[Client] Chat port from server = " + port);
+                System.out.println("[Client] Chat port = " + port + ", seq = " + seq);
+
+                // ------------ FIXED ACK ------------
+                int ackSeq = seq + 1;
+                String ack = "ACK:SEQ:" + ackSeq;
+                byte[] ackBytes = ack.getBytes();
+                DatagramPacket ackPacket = new DatagramPacket(
+                        ackBytes,
+                        ackBytes.length,
+                        packet.getAddress(),
+                        port // reply to NEW server port
+                );
+                socket.send(ackPacket);
+                // -----------------------------------
 
                 return port;
 
             } catch (Exception e) {
                 e.printStackTrace();
                 return -1;
-            }
-        }
-
-
-
-        public void receiveReliable() {
-            try {
-                byte[] buffer = new byte[1024];
-                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-
-                // Wait for message from server
-                socket.receive(packet);
-
-                // Extract message
-                String msg = new String(packet.getData(), 0, packet.getLength());
-                System.out.println("[Client] Received: " + msg);
-
-                // ==== SEND ACK BACK ====
-                String ack = "ACK:" + msg;
-                byte[] ackData = ack.getBytes();
-
-                DatagramPacket ackPacket = new DatagramPacket(
-                        ackData,
-                        ackData.length,
-                        packet.getAddress(),
-                        packet.getPort()
-                );
-
-                socket.send(ackPacket);
-                System.out.println("[Client] Sent ACK: " + ack);
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                System.out.println("[Client] Error receiving message.");
             }
         }
 

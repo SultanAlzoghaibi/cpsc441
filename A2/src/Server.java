@@ -72,7 +72,7 @@ public class Server {
         private int chatterID;
         private int clientID;
         private InetAddress  address;
-
+        private int clientPort;
 
 
 
@@ -80,7 +80,7 @@ public class Server {
         public ServerSideConnection(DatagramSocket s, int id, InetAddress address, int clientPort) {
             this.socket = s;
             chatterID = id;
-            this.clientID = clientPort;
+            this.clientPort = clientPort;
 
             this.address = address;
 
@@ -96,15 +96,63 @@ public class Server {
                 throw new RuntimeException(e);
             }
 
-            sendServerChatPort(address, clientID, portNum);
+            int seqNum = rand.nextInt(10000) ;
+            sendServerChatPort(address, this.clientPort, portNum, seqNum);
+            if (!receiveNewSocketACK(socket, seqNum)) {
+                System.out.println("error");
+                return;
+            }
+
+
             //sendClientListOfClients(address, clientID);
 
 
         }
-
-        public void sendServerChatPort(InetAddress clientAddress, int clientPort, int serverPortNum){
+        public boolean receiveNewSocketACK(DatagramSocket socket, int seqNum) {
             try {
-                String msg = "CHAT_PORT:" + serverPortNum;
+                byte[] buffer = new byte[BufferLength];
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+
+                socket.setSoTimeout(2000);  // 2 second timeout like rdt
+                socket.receive(packet);
+
+                String msg = new String(packet.getData(), 0, packet.getLength());
+                System.out.println("[Server] Received ACK: " + msg);
+
+                // Parse expected ACK format
+                // Format: ACK:<something> SEQ:<number>
+                if (!msg.startsWith("ACK:")) {
+                    System.out.println("[Server] Not an ACK packet.");
+                    return false;
+                }
+
+                // Extract the sequence number
+                String[] parts = msg.split("SEQ:");
+                if (parts.length < 2) {
+                    System.out.println("[Server] ACK missing SEQ.");
+                    return false;
+                }
+
+                int ackSeq = Integer.parseInt(parts[1].trim());
+
+                // Must equal seqNum + 1 to be valid
+                if (ackSeq == seqNum + 1) {
+                    System.out.println("[Server] Correct ACK received with SEQ: " + ackSeq);
+                    return true;
+                } else {
+                    System.out.println("[Server] Wrong ACK SEQ: expected " + (seqNum+1) + " but got " + ackSeq);
+                    return false;
+                }
+
+            } catch (IOException e) {
+                System.out.println("[Server] Timeout or socket error while waiting for ACK");
+                return false;
+            }
+        }
+
+        public void sendServerChatPort(InetAddress clientAddress, int clientPort, int serverPortNum, int seqNum){
+            try {
+                String msg = "CHAT_PORT:" + serverPortNum + ":SEQ:" + seqNum;
                 byte[] data = msg.getBytes();
 
                 DatagramPacket packet = new DatagramPacket(
@@ -115,13 +163,14 @@ public class Server {
                 );
 
                 serverSocket.send(packet);
-                System.out.println("[Server] Sent CHAT_PORT: " + serverPortNum);
+                System.out.println("[Server] Sent: " + msg);
 
             } catch (Exception e) {
                 e.printStackTrace();
                 System.out.println("[Server] Failed to send CHAT_PORT");
             }
         }
+
 
         public boolean sendReliable(String msg, InetAddress clientAddress, int clientPort, DatagramSocket socket) {
             try {
