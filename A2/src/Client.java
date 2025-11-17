@@ -66,8 +66,11 @@ public class Client {
                 while(true){
 
                     receiveServerMsg(ServerReqsocket);
+                    System.out.print("enter message to send to server: ");
                     String msg = sc.nextLine();
+
                     sendReliableToServer(ServerReqsocket, serverAddress, serverReqSendingPort, msg, seqNum);
+                    seqNum++;
 
                 }
 

@@ -101,13 +101,17 @@ public class Server {
                 System.out.println("error");
                 return;
             }
-
+            boolean didrecieve = false;
             while (true) {
                 String msg = "Hello!";
-                sendReliableToClient(socket, address, clientPort, msg, seqNum);
-                receiveClientMessageAndAck( socket);
+                didrecieve = sendReliableToClient(socket, address, clientPort, msg, seqNum);
+                if (!didrecieve) {
+                    System.out.println("error");
+                    continue;
+                }
+                System.out.println("they got out msg");
+                receiveClientMessageAndAck(socket);
                 seqNum++;  // MUST increment by 1
-
 
             }
             //sendClientListOfClients(address, clientID);
@@ -170,7 +174,7 @@ public class Server {
             try {
                 byte[] buffer = new byte[1024];
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-
+                socket.setSoTimeout(2000000000);
                 socket.receive(packet);
                 String msg = new String(packet.getData(), 0, packet.getLength());
 
