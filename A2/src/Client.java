@@ -48,13 +48,16 @@ public class Client {
 
             try{
                 ServerConnectsocket = new DatagramSocket();
+                ServerNewChatListnerSocket  = new DatagramSocket();
+                int LisnerPort = ServerNewChatListnerSocket.getLocalPort();
 
                 serverAddress = InetAddress.getByName("localhost");
                 System.out.println("[Client] Connected to server on port " + serverConnectionPort);
                 Random rand = new Random();
                 int seqNum = rand.nextInt(9999);
 
-                String message = "REGISTER:SEQ:" + seqNum;
+                String message = "REGISTER:SEQ:" + seqNum+ ":LISTNERPORT:" +LisnerPort;
+
 
                 byte[] sendData = message.getBytes();
 
@@ -66,9 +69,11 @@ public class Client {
                 ServerReqsocket = ServerConnectsocket;
 
                 Scanner sc = new Scanner(System.in);
+                String recieveMsg;
                 while(true){
 
-                    receiveServerMsg(ServerReqsocket);
+                    recieveMsg = receiveServerMsg(ServerReqsocket);
+                    System.out.println(recieveMsg);
                     System.out.print("enter message to send to server: ");
                     String msg = sc.nextLine();
 
@@ -104,21 +109,22 @@ public class Client {
                     try {
                         socket.receive(ackPacket);
                         String ack = new String(ackPacket.getData(), 0, ackPacket.getLength());
-                        System.out.println("[Client] Received: " + ack);
+                        //System.out.println("[Client] Received: " + ack);
 
                         if (!ack.startsWith("ACK:SEQ:")) continue;
 
                         int ackNum = Integer.parseInt(ack.split(":")[2]);
 
                         if (ackNum == seqNum + 1) {
-                            System.out.println("[Client] Correct ACK received");
+                            //System.out.println("[Client] Correct ACK received");
                             return true;
                         } else {
-                            System.out.println("[Client] Wrong ACK received");
+                            //System.out.println("[Client] Wrong ACK received");
+
                         }
 
                     } catch (SocketTimeoutException e) {
-                        System.out.println("[Client] Timeout waiting for ACK… retrying");
+                        //System.out.println("[Client] Timeout waiting for ACK… retrying");
                     }
                 }
 
@@ -140,7 +146,7 @@ public class Client {
 
                 // 2. Convert to string
                 String msg = new String(packet.getData(), 0, packet.getLength());
-                System.out.println("[Client] Received from server: " + msg);
+                //System.out.println("[Client] Received from server: " + msg);
 
                 // ---------------- Parse sequence number ----------------
                 // Format expected: SOMETHING:SEQ:<num>
@@ -165,7 +171,7 @@ public class Client {
                 );
 
                 socket.send(ackPacket);
-                System.out.println("[Client] Sent ACK:SEQ:" + ackSeq);
+                //System.out.println("[Client] Sent ACK:SEQ:" + ackSeq);
 
                 return msg;
 

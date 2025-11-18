@@ -47,6 +47,7 @@ public class Server {
                 numberOfClients++;
                 if (numberOfClients > maxNumberOfClients){
                     System.out.println("Maximum number of connections reached");
+                    numberOfClients--;
                     continue;
                 }
 
@@ -54,9 +55,13 @@ public class Server {
                 int clientPort = packet.getPort();
                 Random rand = new Random();
                 int ClientID = rand.nextInt((int)(Math.pow(2, 32) - 1));
-                ClientIDtoPort.put(ClientID, clientPort);
 
-                System.out.println("client Port: " + clientPort);
+                String[] tokens = msg.trim().split(":");
+                int ListenPort = Integer.parseInt(tokens[4]);
+
+                ClientIDtoPort.put(ClientID, ListenPort);
+
+                System.out.println("client LPort: " + ListenPort);
                 ServerSideConnection ssc = new ServerSideConnection(serverSocket, ClientID, address, clientPort);
                 Thread t = new Thread(ssc);
                 t.start();
@@ -86,6 +91,7 @@ public class Server {
             this.socket = s;
             chatterID = id;
             this.clientPort = clientPort;
+            this.clientID = id;
 
             this.address = address;
 
@@ -108,7 +114,17 @@ public class Server {
             }
             boolean didrecieve = false;
             while (true) {
-                String msg = "Hello!";
+                String msg = """
+                    Welcome to the Chat System! Here are the available commands:
+                    
+                    connect <client_id>         - Connect to another client
+                    msg <client_id> <message>   - Send a message to a connected client
+                    terminate <client_id>       - Terminate chat with a client
+                    chats                       - Show active chats
+                    list                        - Request list of all online clients
+                    leave                       - Leave the application
+                    
+                    """;
                 didrecieve = sendReliableToClient(socket, address, clientPort, msg, seqNum);
                 if (!didrecieve) {
                     System.out.println("error");
@@ -124,7 +140,9 @@ public class Server {
                         this::sendReliableToClient, // <-- method reference to pass the function
                         socket,
                         address,
-                        clientPort
+                        clientPort,
+                        clientID
+
                 );
 
 
