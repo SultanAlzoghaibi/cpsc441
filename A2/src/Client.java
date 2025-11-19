@@ -1,14 +1,11 @@
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketTimeoutException;
+import java.net.*;
 import java.util.Random;
 import java.util.Scanner;
 
 public class Client {
 
     private ClientToServer csc;
-
+    private NewClientListner ncL;
 
     public Client() {
 
@@ -16,16 +13,15 @@ public class Client {
 
     public void connectToServer(){
         csc = new ClientToServer();
-    }
 
-    public void connectToOtherClient(){
-        csc = new ClientToServer();
     }
 
 
-    private class ClientToClient extends Thread{
+
+
+    private class NewClientListner extends Thread{
         private DatagramSocket socket;
-        public ClientToClient(){
+        public NewClientListner(ReliableSender sender){
 
 
         }
@@ -36,7 +32,8 @@ public class Client {
 
     }
 
-    private class ClientToServer{
+
+    public class ClientToServer{
         private DatagramSocket ServerConnectsocket;
         private DatagramSocket ServerReqsocket;
         private InetAddress serverAddress;
@@ -70,6 +67,8 @@ public class Client {
 
                 Scanner sc = new Scanner(System.in);
                 String recieveMsg;
+                new Thread(() -> incommingNewChat(ServerNewChatListnerSocket)).start();
+
                 while(true){
 
                     recieveMsg = receiveServerMsg(ServerReqsocket);
@@ -180,6 +179,54 @@ public class Client {
                 return null;
             }
         }
+
+        public void incommingNewChat(DatagramSocket listenerSocket) {
+            try {
+                // 1. Receive the connection request (this already sends ACK)
+                String msg = receiveServerMsg(listenerSocket);
+                if (msg == null) return;
+
+                if (!msg.startsWith("CONNECTION_REQUEST")) {
+                    System.out.println("[Client] Unknown incoming message: " + msg);
+                    return;
+                }
+
+                // 2. Parse the message
+                // Format: CONNECTION_REQUEST:FROM:<id>:SEQ:<num>
+                String[] parts = msg.split(":");
+                int fromClientId = Integer.parseInt(parts[2]);
+
+                System.out.println("\n*** Incoming chat request ***");
+                System.out.println("Client " + fromClientId + " wants to connect with you.");
+
+                // 3. Ask user
+                Scanner sc = new Scanner(System.in);
+                System.out.print("Accept? (y/n): ");
+                String input = sc.nextLine().trim().toLowerCase();
+
+                // 4. Build reply
+                String reply;
+                if (input.equals("y")) {
+                    reply = "CONNECTION_ACCEPT:FROM:" + fromClientId;
+                    System.out.println("[Client] You accepted the connection.");
+                } else {
+                    reply = "CONNECTION_REJECT:FROM:" + fromClientId;
+                    System.out.println("[Client] You rejected the connection.");
+                }
+
+                // 5. Send reply using RDT
+
+                int seq = new Random().nextInt(10000);
+
+                InetAddress addr = listenerSocket.getInetAddress();
+                int port = listenerSocket.getPort();
+                sendReliableToServer(listenerSocket, addr, port, reply, seq);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
 
 
 

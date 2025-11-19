@@ -5,11 +5,13 @@ import  java.util.Random;
 
 // ServerCommands.java
 public class ServerCommands {
+    HashMap<Integer,Integer[]> connectionsMap = new HashMap<>();
 
     public static void handleCommand(
             String receiveMsg,
             Map<Integer, Integer> clientMap,
-            ReliableSender sender, // <-- function pointer
+            ReliableSender sender, // <-- function pointe
+            ReliableReceive receiver,
             DatagramSocket clientSocket,
             InetAddress clientAddress,
             int clientPort,
