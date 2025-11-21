@@ -59,7 +59,9 @@ public class Server {
                 String[] tokens = msg.trim().split(":");
                 int ListenPort = Integer.parseInt(tokens[4]);
 
-                ClientIDtoPort.put(ClientID, ListenPort);
+                synchronized (ClientIDtoPort) {
+                    ClientIDtoPort.put(ClientID, ListenPort);
+                }
 
                 System.out.println("client LPort: " + ListenPort);
                 ServerSideConnection ssc = new ServerSideConnection(serverSocket, ClientID, address, clientPort);
@@ -77,7 +79,7 @@ public class Server {
     }
     private class ServerSideConnection implements Runnable {
         // ...
-        private DatagramSocket socket;
+        private DatagramSocket chatServerSocket;
         private int chatterID;
         private int clientID;
         private InetAddress  address;
@@ -88,7 +90,7 @@ public class Server {
 
 
         public ServerSideConnection(DatagramSocket s, int id, InetAddress address, int clientPort) {
-            this.socket = s;
+            this.chatServerSocket = s;
             chatterID = id;
             this.clientPort = clientPort;
             this.clientID = id;
@@ -101,20 +103,20 @@ public class Server {
             Random rand = new Random();
             int portNum = rand.nextInt(10000) + 10000;
             try {
-                socket = new DatagramSocket(portNum);
+                chatServerSocket = new DatagramSocket(portNum);
             } catch (SocketException e) {
                 throw new RuntimeException(e);
             }
 
             int seqNum = rand.nextInt(10000) ;
             sendServerChatPort(address, this.clientPort, portNum, seqNum);
-            if (!receiveNewSocketACK(socket, seqNum)) {
+            if (!receiveNewSocketACK(chatServerSocket, seqNum)) {
                 System.out.println("error");
                 return;
             }
             boolean didrecieve = false;
-            while (true) {
-                String msg = """
+
+            String msg = """
                     Welcome to the Chat System! Here are the available commands:
                     
                     connect <client_id>         - Connect to another client
@@ -123,28 +125,30 @@ public class Server {
                     chats                       - Show active chats
                     list                        - Request list of all online clients
                     leave                       - Leave the application
+                    Help                        - list out all the options
                     
                     """;
-                didrecieve = sendReliableToClient(socket, address, clientPort, msg, seqNum);
+
+            didrecieve = sendReliableToClient(chatServerSocket, address, clientPort, msg, seqNum);
+            while (true) {
                 if (!didrecieve) {
                     System.out.println("error");
                     continue;
                 }
-                System.out.println("they got out msg");
-                String receiveMsg = receiveClientMessageAndAck(socket);
-                System.out.println("[Server] Received: " + receiveMsg);
+                //System.out.println("they got out msg");
+                String receiveMsg = receiveClientMessageAndAck(chatServerSocket);
+                //System.out.println("[Server] Received: " + receiveMsg);
                 assert receiveMsg != null;
+
                 ServerCommands.handleCommand(
                         receiveMsg,
                         getClientIDtoPort(),
                         this::sendReliableToClient, // <-- method reference to pass the function
                         this::receiveClientMessageAndAck,
-                        socket,
+                        chatServerSocket,
                         address,
                         clientPort,
                         clientID
-
-
                 );
 
 
@@ -167,7 +171,7 @@ public class Server {
 
                 for (int attempt = 1; attempt <= 3; attempt++) {
                     socket.send(packet);
-                    System.out.println("[Server] Sent: " + msg + " (attempt " + attempt + ")");
+                    //System.out.println("[Server] Sent: " + msg + " (attempt " + attempt + ")");
 
                     // wait for ACK
                     byte[] buffer = new byte[1024];
@@ -177,7 +181,7 @@ public class Server {
                     try {
                         socket.receive(ackPacket);
                         String ackMsg = new String(ackPacket.getData(), 0, ackPacket.getLength());
-                        System.out.println("[Server] Received ACK: " + ackMsg);
+                        //System.out.println("[Server] Received ACK: " + ackMsg);
 
                         if (!ackMsg.startsWith("ACK:SEQ:"))
                             continue;
@@ -185,19 +189,19 @@ public class Server {
                         int ackSeq = Integer.parseInt(ackMsg.split(":")[2]);
 
                         if (ackSeq == seqNum + 1) {
-                            System.out.println("[Server] Correct ACK received");
+                            //System.out.println("[Server] Correct ACK received");
                             return true;
                         }
                         else {
-                            System.out.println("[Server] Wrong ACK: expected " + (seqNum+1) + " got " + ackSeq);
+                            //System.out.println("[Server] Wrong ACK: expected " + (seqNum+1) + " got " + ackSeq);
                         }
 
                     } catch (SocketTimeoutException e) {
-                        System.out.println("[Server] Timeout waiting for ACK… retrying");
+                        //System.out.println("[Server] Timeout waiting for ACK… retrying");
                     }
                 }
 
-                System.out.println("[Server] FAILED to deliver reliable message");
+                //System.out.println("[Server] FAILED to deliver reliable message");
                 return false;
 
             } catch (Exception e) {
@@ -218,7 +222,7 @@ public class Server {
 
                 // Parse sequence number
                 if (!msg.contains("SEQ:")) {
-                    System.out.println("[Server] ERROR: no seq");
+                    //System.out.println("[Server] ERROR: no seq");
                     return "ERROR: no seq";
                 }
 
@@ -236,7 +240,7 @@ public class Server {
                 );
 
                 socket.send(ackPacket);
-                System.out.println("[Server] Sent ACK:SEQ:" + ackSeq);
+                //System.out.println("[Server] Sent ACK:SEQ:" + ackSeq);
                 return msg;
             } catch (Exception e) {
                 e.printStackTrace();
@@ -300,11 +304,11 @@ public class Server {
                 );
 
                 serverSocket.send(packet);
-                System.out.println("[Server] Sent: " + msg);
+                //System.out.println("[Server] Sent: " + msg);
 
             } catch (Exception e) {
                 e.printStackTrace();
-                System.out.println("[Server] Failed to send CHAT_PORT");
+                //System.out.println("[Server] Failed to send CHAT_PORT");
             }
         }
 
@@ -322,7 +326,7 @@ public class Server {
                 for (int attempt = 1; attempt <= 3; attempt++) {
                     // Send message
                     socket.send(packet);
-                    System.out.println("[Server] Sent: " + msg + " (attempt " + attempt + ")");
+                    //System.out.println("[Server] Sent: " + msg + " (attempt " + attempt + ")");
                     // Prepare to receive ACK
                     DatagramPacket ackPacket = new DatagramPacket(buffer, buffer.length);
                     socket.setSoTimeout(2000); // Wait max 2 seconds for ACK
@@ -330,25 +334,25 @@ public class Server {
                     try {
                         socket.receive(ackPacket);
                         if (!msg.startsWith("ACK:")) {
-                            System.out.println("[Server] Ignored ACK");
+                            //System.out.println("[Server] Ignored ACK");
                             break;
                         }
 
                         String ackMsg = new String(ackPacket.getData(), 0, ackPacket.getLength());
 
                         if (ackMsg.equals(expectedAck)) {
-                            System.out.println("[Server] ACK received for: " + msg);
+                            //System.out.println("[Server] ACK received for: " + msg);
                             return true; // SUCCESS
                         } else {
-                            System.out.println("[Server] Received wrong ACK: " + ackMsg);
+                            //System.out.println("[Server] Received wrong ACK: " + ackMsg);
                         }
 
                     } catch (java.net.SocketTimeoutException e) {
-                        System.out.println("[Server] Timeout waiting for ACK… retrying");
+                       //System.out.println("[Server] Timeout waiting for ACK… retrying");
                     }
                 }
 
-                System.out.println("[Server] Failed to get ACK for: " + msg);
+                //System.out.println("[Server] Failed to get ACK for: " + msg);
                 return false;
 
             } catch (Exception e) {

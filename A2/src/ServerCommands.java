@@ -1,4 +1,5 @@
 import java.net.*;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import  java.util.Random;
@@ -12,18 +13,25 @@ public class ServerCommands {
             Map<Integer, Integer> clientMap,
             ReliableSender sender, // <-- function pointe
             ReliableReceive receiver,
-            DatagramSocket clientSocket,
+            DatagramSocket ChatServerSocket,
             InetAddress clientAddress,
             int clientPort,
             int ourClientId
     ) {
-        System.out.println(" HANDLING THE MSG: " + receiveMsg);
+        //System.out.println(" HANDLING THE MSG: " + receiveMsg);
 
         // Your switch-case logic here
+        String clean = receiveMsg.trim();
 
-        String[] tokens = receiveMsg.trim().split(":", 8); // max 3 parts
+// Remove SEQ portion if present
+        int seqIndex = clean.indexOf(":SEQ:");
+        if (seqIndex != -1) {
+            clean = clean.substring(0, seqIndex).trim();
+        }
+
+        String[] tokens = clean.trim().split(" ", 8); // max 3 parts
         String command = tokens[0].toLowerCase();
-
+        System.out.println(" COMMAND: " + Arrays.toString(tokens));
         switch (command) {
             case "connect":
 
@@ -31,8 +39,16 @@ public class ServerCommands {
                 if (tokens.length < 2) {
                     System.out.println("Usage: connect <client_id>");
                 } else {
+
                     int targetId = Integer.parseInt(tokens[1]);
-                    connectToClient(targetId, clientMap, clientSocket, clientAddress, sender, ourClientId);
+                    connectToClient(targetId,
+                            clientMap,
+                            ChatServerSocket,
+                            clientPort,
+                            clientAddress,
+                            sender,
+                            receiver,
+                            ourClientId);
 
                 }
             case "msg":
@@ -64,7 +80,7 @@ public class ServerCommands {
                 break;
 
             case "list":
-                requestClientListFromServer(sender, clientSocket, clientAddress, clientPort, clientMap);
+                requestClientListFromServer(sender, ChatServerSocket, clientAddress, clientPort, clientMap);
 
                 break;
 
@@ -75,11 +91,13 @@ public class ServerCommands {
 
     public static void connectToClient(int targetId,
                                        Map<Integer, Integer> clientMap,
-                                       DatagramSocket clientSocket,
+                                       DatagramSocket chatServerSocket,
+                                       int clientPort,
                                        InetAddress serverAddress,
                                        ReliableSender sender,
+                                       ReliableReceive receiver,
                                        int myClientId) {
-
+        System.out.println("running connectToClient");
         // 1. Make sure client exists in the map
         if (!clientMap.containsKey(targetId)) {
             System.out.println("[Client] ERROR: Client " + targetId + " is inactive");
@@ -93,43 +111,50 @@ public class ServerCommands {
         Random rand = new Random();
         int seqNum = rand.nextInt(10000);
 
-        while (true) {
-            try {
-                // 2. Build connection request message
-                String message = "CONNECTION_REQUEST:FROM:" + myClientId + ":SEQ:" + seqNum;
 
-                // 3. Send using YOUR reliable sender (rdt)
-                System.out.println("[Client] Sending request...");
-                sender.send(clientSocket, serverAddress, targetPort, message, seqNum);
+        try {
+            // 2. Build connection request message
+            String message = "CONNECTION_REQUEST:FROM:" + myClientId;
+            seqNum += 5;
+            // 3. Send using YOUR reliable sender (rdt)
+            System.out.println("[Client] Sending request: " + message);
+            boolean didreceive = sender.send(chatServerSocket, serverAddress, targetPort, message, seqNum);
 
-                // 4. Wait up to 10 seconds for accept/reject
-                byte[] buffer = new byte[1024];
-                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-                clientSocket.setSoTimeout(10_000);
-                clientSocket.receive(packet);
-
-                String reply = new String(packet.getData(), 0, packet.getLength());
-                System.out.println("[Client] Received: " + reply);
-
-                if (reply.startsWith("CONNECTION_ACCEPT")) {
-                    System.out.println("[Client] Connection established!");
-                    return;
-                }
-
-                if (reply.startsWith("CONNECTION_REJECT")) {
-                    System.out.println("[Client] Connection rejected.");
-                    return;
-                }
-
-                // ignore anything else and retry
-
-            } catch (SocketTimeoutException e) {
-                System.out.println("[Client] No reply… retrying request");
-            } catch (Exception e) {
-                e.printStackTrace();
+            if (!didreceive) {
+                System.out.println("[Client] ERROR: Unable to send request");
                 return;
             }
+            // 4. Wait up to 10 seconds for accept/reject
+            byte[] buffer = new byte[1024];
+            DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+            chatServerSocket.setSoTimeout(10_000);
+            chatServerSocket.receive(packet);
+
+            String reply = receiver.receive(chatServerSocket);
+            System.out.println("[Client] Received: " + reply);
+
+            if (reply.startsWith("CONNECTION_ACCEPT")) {
+                System.out.println("[Client] Connection established!");
+                return;
+            }
+
+            if (reply.startsWith("CONNECTION_REJECT")) {
+                System.out.println("[Client] Connection rejected.");
+                return;
+            }
+            String msgToClienConnecter = "Server sent a connection message to  " + targetId;
+            sender.send(chatServerSocket, serverAddress, targetPort, msgToClienConnecter, seqNum);
+
+
+            // ignore anything else and retry
+
+        } catch (SocketTimeoutException e) {
+            System.out.println("[Client] No reply… retrying request");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return;
         }
+
     }
 
 
@@ -142,7 +167,7 @@ public class ServerCommands {
     public static void leaveApplication() {  }
 
     public static void requestClientListFromServer( ReliableSender sender,
-                                                    DatagramSocket clientSocket,
+                                                    DatagramSocket chatServerSocket,
                                                     InetAddress clientAddress,
                                                     int clientPort,
                                                     Map<Integer, Integer> clientMap
@@ -158,6 +183,6 @@ public class ServerCommands {
 
 // Step 2: Send the string to the target client
         String message = sb.toString();
-        sender.send(clientSocket, clientAddress, clientPort, message, 1);
+        sender.send(chatServerSocket, clientAddress, clientPort, message, 1);
     }
 }

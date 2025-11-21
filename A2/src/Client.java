@@ -60,9 +60,9 @@ public class Client {
 
                 DatagramPacket packet = new DatagramPacket(sendData, sendData.length, serverAddress, serverConnectionPort);
                 ServerConnectsocket.send(packet);
-                System.out.println("[Client] Sent packet: " + message);
+                //System.out.println("[Client] Sent packet: " + message);
                 int serverReqSendingPort = receivePortNumber();
-                System.out.println("serverReqSendingPort: "+ serverReqSendingPort);
+                //System.out.println("serverReqSendingPort: "+ serverReqSendingPort);
                 ServerReqsocket = ServerConnectsocket;
 
                 Scanner sc = new Scanner(System.in);
@@ -78,6 +78,7 @@ public class Client {
 
                     sendReliableToServer(ServerReqsocket, serverAddress, serverReqSendingPort, msg, seqNum);
                     seqNum++;
+                    Thread.sleep(100);
 
                 }
 
@@ -98,7 +99,7 @@ public class Client {
                 // Try up to 3 times (rdt style)
                 for (int attempt = 1; attempt <= 3; attempt++) {
                     socket.send(packet);
-                    System.out.println("[Client] Sent: " + msg + " (attempt " + attempt + ")");
+                    //System.out.println("[Client] Sent: " + msg + " (attempt " + attempt + ")");
 
                     // Wait for ACK
                     byte[] buffer = new byte[1024];
@@ -127,7 +128,7 @@ public class Client {
                     }
                 }
 
-                System.out.println("[Client] FAILED to deliver message");
+                //System.out.println("[Client] FAILED to deliver message");
                 return false;
 
             } catch (Exception e) {
@@ -145,7 +146,7 @@ public class Client {
 
                 // 2. Convert to string
                 String msg = new String(packet.getData(), 0, packet.getLength());
-                //System.out.println("[Client] Received from server: " + msg);
+                System.out.println("[in receiveServerMsg] Received from server: " + msg);
 
                 // ---------------- Parse sequence number ----------------
                 // Format expected: SOMETHING:SEQ:<num>
@@ -157,7 +158,8 @@ public class Client {
                 String[] parts = msg.split("SEQ:");
                 int seq = Integer.parseInt(parts[1].trim());
 
-                // ---------------- Send ACK ----------------
+                // ---------------- Send ACK ---
+                // -------------
                 int ackSeq = seq + 1;
                 String ackMsg = "ACK:SEQ:" + ackSeq;
                 byte[] ackBytes = ackMsg.getBytes();
@@ -182,8 +184,10 @@ public class Client {
 
         public void incommingNewChat(DatagramSocket listenerSocket) {
             try {
+
                 // 1. Receive the connection request (this already sends ACK)
                 String msg = receiveServerMsg(listenerSocket);
+                System.out.println("WEEE GOT A SOMTHING!!! " + msg);
                 if (msg == null) return;
 
                 if (!msg.startsWith("CONNECTION_REQUEST")) {
@@ -196,8 +200,8 @@ public class Client {
                 String[] parts = msg.split(":");
                 int fromClientId = Integer.parseInt(parts[2]);
 
-                System.out.println("\n*** Incoming chat request ***");
-                System.out.println("Client " + fromClientId + " wants to connect with you.");
+                //System.out.println("\n*** Incoming chat request ***");
+                //System.out.println("Client " + fromClientId + " wants to connect with you.");
 
                 // 3. Ask user
                 Scanner sc = new Scanner(System.in);
@@ -238,7 +242,7 @@ public class Client {
                 ServerConnectsocket.receive(packet);
 
                 String msg = new String(packet.getData(), 0, packet.getLength());
-                System.out.println("[Client] Received: " + msg);
+                //System.out.println("[Client] Received: " + msg);
 
                 if (!msg.startsWith("CHAT_PORT:")) {
                     System.out.println("[Client] ERROR: expected CHAT_PORT");
@@ -249,7 +253,8 @@ public class Client {
                 int port = Integer.parseInt(parts[1]);
                 int seq = Integer.parseInt(parts[3]);
 
-                System.out.println("[Client] Chat port = " + port + ", seq = " + seq);
+                //System.out.println("[Client] Chat port = " + port + ", seq = " + seq);
+
 
                 // ------------ FIXED ACK ------------
                 int ackSeq = seq + 1;
