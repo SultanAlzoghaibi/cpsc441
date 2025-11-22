@@ -114,6 +114,7 @@ public class Client {
                     socket.send(packet);
                     //System.out.println("[Client] Sent: " + msg + " (attempt " + attempt + ")");
 
+
                     // Wait for ACK
                     byte[] buffer = new byte[1024];
                     DatagramPacket ackPacket = new DatagramPacket(buffer, buffer.length);
@@ -199,7 +200,7 @@ public class Client {
             try {
 
                 // 1. Receive the connection request (this already sends ACK)
-                String msg = receiveServerMsg(listenerSocket);
+                String msg = receiveServerMsgWithPort(listenerSocket);
                 System.out.println("WEEE GOT A SOMTHING!!! " + msg);
                 if (msg == null) return;
 
@@ -244,14 +245,64 @@ public class Client {
 
                 int seq = new Random().nextInt(10000);
 
-                InetAddress addr = listenerSocket.getInetAddress();
-                int port = listenerSocket.getPort();
-                sendReliableToServer(listenerSocket, addr, port, reply, seq);
+                InetAddress addr = InetAddress.getByName("localhost");
+
+
+                String[] t = msg.split(":");
+                int fromPort = Integer.parseInt(t[6]);
+                System.out.println(fromPort);
+                sendReliableToServer(listenerSocket, addr, fromPort, reply, seq);
 
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
+
+        public String receiveServerMsgWithPort(DatagramSocket socket) {
+            try {
+                // 1. Receive packet
+                byte[] buffer = new byte[1024];
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                socket.receive(packet);
+
+                // 2. Convert to string
+                String msg = new String(packet.getData(), 0, packet.getLength());
+                System.out.println("[in receiveServerMsg] Received from server: " + msg);
+
+                // ---------------- Parse sequence number ----------------
+                // Format expected: SOMETHING:SEQ:<num>
+                if (!msg.contains("SEQ:")) {
+                    System.out.println("[Client] ERROR: Message missing SEQ number");
+                    return msg; // still return the message
+                }
+
+                String[] parts = msg.split("SEQ:");
+                int seq = Integer.parseInt(parts[1].trim());
+
+                // ---------------- Send ACK ---
+                // -------------
+                int ackSeq = seq + 1;
+                String ackMsg = "ACK:SEQ:" + ackSeq;
+                byte[] ackBytes = ackMsg.getBytes();
+
+                DatagramPacket ackPacket = new DatagramPacket(
+                        ackBytes,
+                        ackBytes.length,
+                        packet.getAddress(),
+                        packet.getPort()
+                );
+
+                socket.send(ackPacket);
+                //System.out.println("[Client] Sent ACK:SEQ:" + ackSeq);
+                msg +=  ":FROMPORT:" + packet.getPort();
+                return msg;
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
+
 
 
 

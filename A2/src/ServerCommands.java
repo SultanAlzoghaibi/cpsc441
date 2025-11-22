@@ -111,7 +111,7 @@ public class ServerCommands {
             System.out.println("[Client] ERROR: Client " + targetId + " is inactive");
             return;
         }
-        DatagramSocket targetSocket = new DatagramSocket();
+        DatagramSocket serverThreadSocket = new DatagramSocket();
 
         int targetPort = clientMap.get(targetId);
         System.out.println("[Client] Trying to connect to Client " + targetId +
@@ -127,20 +127,16 @@ public class ServerCommands {
             seqNum += 5;
             // 3. Send using YOUR reliable sender (rdt)
             System.out.println("[Client] Sending request: " + message);
-            boolean didreceive = sender.send(targetSocket, serverAddress, targetPort, message, seqNum);
+            boolean didreceive = sender.send(serverThreadSocket, serverAddress, targetPort, message, seqNum);
 
             if (!didreceive) {
                 System.out.println("[Client] ERROR: Unable to send request");
                 return;
             }
-            // 4. Wait up to 10 seconds for accept/reject
-            byte[] buffer = new byte[1024];
-            DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-            targetSocket.setSoTimeout(10_000);
-            targetSocket.receive(packet);
 
-            String reply = receiver.receive(targetSocket);
-            System.out.println(" REEECEIVRED    : " + reply);
+            System.out.println("waiting reply");
+            String reply = receiver.receive(serverThreadSocket);
+            System.out.println(" REEECEIVRED: " + reply);
 
             if (reply.startsWith("CONNECTION_ACCEPT")) {
                 System.out.println("[Client] Connection established!");
@@ -156,8 +152,6 @@ public class ServerCommands {
 
             // ignore anything else and retry
 
-        } catch (SocketTimeoutException e) {
-            System.out.println("[Client] No reply… retrying request");
         } catch (Exception e) {
 
             e.printStackTrace();
