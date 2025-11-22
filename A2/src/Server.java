@@ -54,7 +54,7 @@ public class Server {
                 InetAddress address = packet.getAddress();
                 int clientPort = packet.getPort();
                 Random rand = new Random();
-                int ClientID = rand.nextInt((int)(Math.pow(2, 32) - 1));
+                int ClientID = rand.nextInt(numberOfClients);
 
                 String[] tokens = msg.trim().split(":");
                 int ListenPort = Integer.parseInt(tokens[4]);
@@ -140,16 +140,20 @@ public class Server {
                 //System.out.println("[Server] Received: " + receiveMsg);
                 assert receiveMsg != null;
 
-                ServerCommands.handleCommand(
-                        receiveMsg,
-                        getClientIDtoPort(),
-                        this::sendReliableToClient, // <-- method reference to pass the function
-                        this::receiveClientMessageAndAck,
-                        chatServerSocket,
-                        address,
-                        clientPort,
-                        clientID
-                );
+                try {
+                    ServerCommands.handleCommand(
+                            receiveMsg,
+                            getClientIDtoPort(),
+                            this::sendReliableToClient, // <-- method reference to pass the function
+                            this::receiveClientMessageAndAck,
+                            chatServerSocket,
+                            address,
+                            clientPort,
+                            clientID
+                    );
+                } catch (SocketException e) {
+                    throw new RuntimeException(e);
+                }
 
 
                 seqNum++;  // MUST increment by 1

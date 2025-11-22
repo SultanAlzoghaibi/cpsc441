@@ -1,13 +1,20 @@
 import java.net.*;
 import java.util.Random;
 import java.util.Scanner;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Client {
 
     private ClientToServer csc;
     private NewClientListner ncL;
+    Scanner sc ;
+
+    private final ReentrantLock inputLock = new ReentrantLock(true); // fair lock
+
+
 
     public Client() {
+        sc = new Scanner(System.in);
 
     }
 
@@ -65,7 +72,7 @@ public class Client {
                 //System.out.println("serverReqSendingPort: "+ serverReqSendingPort);
                 ServerReqsocket = ServerConnectsocket;
 
-                Scanner sc = new Scanner(System.in);
+
                 String recieveMsg;
                 new Thread(() -> incommingNewChat(ServerNewChatListnerSocket)).start();
 
@@ -74,7 +81,13 @@ public class Client {
                     recieveMsg = receiveServerMsg(ServerReqsocket);
                     System.out.println(recieveMsg);
                     System.out.print("enter message to send to server: ");
-                    String msg = sc.nextLine();
+                    String msg = "";
+                    inputLock.lock();
+                    try {
+                         msg = sc.nextLine();
+                    }finally {
+                        inputLock.unlock();
+                    }
 
                     sendReliableToServer(ServerReqsocket, serverAddress, serverReqSendingPort, msg, seqNum);
                     seqNum++;
@@ -204,9 +217,18 @@ public class Client {
                 //System.out.println("Client " + fromClientId + " wants to connect with you.");
 
                 // 3. Ask user
-                Scanner sc = new Scanner(System.in);
-                System.out.print("Accept? (y/n): ");
-                String input = sc.nextLine().trim().toLowerCase();
+
+
+                inputLock.lock();
+                String input = "CONNECTION_REJECT:FROM:";
+
+                try {
+                    System.out.print("Accept? (y/n): ");
+                    input = sc.nextLine().trim().toLowerCase();
+                }finally {
+                    inputLock.unlock();
+                }
+
 
                 // 4. Build reply
                 String reply;
