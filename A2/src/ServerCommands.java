@@ -1,23 +1,25 @@
 import java.net.*;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import  java.util.Random;
+import java.util.*;
 
 // ServerCommands.java
 public class ServerCommands {
-    HashMap<Integer,Integer[]> connectionsMap = new HashMap<>();
-
+    static HashMap<Integer, HashSet<Integer>> connectionsMap = new HashMap<>();
+    static ReliableSender sender;
+    static Map<Integer, Integer> clientMap;
     public static void handleCommand(
             String receiveMsg,
-            Map<Integer, Integer> clientMap,
-            ReliableSender sender, // <-- function pointe
+            Map<Integer, Integer> clientMapPara,
+            ReliableSender senderPara, // <-- function pointe
             ReliableReceive receiver,
             DatagramSocket chatServerSocket,
             InetAddress clientAddress,
             int clientPort,
-            int ourClientId
+            int ourClientId,
+            HashMap<Integer, HashSet<Integer>> connectionsMapPara
     ) throws SocketException {
+       connectionsMap = connectionsMapPara;
+       sender = senderPara;
+       clientMap  = clientMapPara;
 
         //System.out.println(" HANDLING THE MSG: " + receiveMsg);
 
@@ -52,13 +54,27 @@ public class ServerCommands {
                             ourClientId);
 
                 }
+                break;
             case "msg":
                 // Example: msg <client_id> <message>
+                System.out.println("MSG!");
                 if (tokens.length < 3) {
                     System.out.println("Usage: msg <client_id> <message>");
                 } else {
                     int targetId = Integer.parseInt(tokens[1]);
                     String message = tokens[2];
+                    chat(
+                            ourClientId,
+                            targetId,
+                            message,
+                            sender,
+                            chatServerSocket,
+                            clientAddress,
+                            clientPort,
+                            clientMap,
+                            connectionsMap
+                    );
+
 
                 }
                 break;
@@ -140,6 +156,9 @@ public class ServerCommands {
 
             if (reply.startsWith("CONNECTION_ACCEPT")) {
                 System.out.println("[Client] Connection established!");
+
+                connectionsMap.get(myClientId).add(targetId);
+
                 return;
             }
 
@@ -160,10 +179,38 @@ public class ServerCommands {
 
     }
 
+    public static void chat(int clientId,
+                            int targetId,
+                            String msg,
+                            ReliableSender sender,
+                            DatagramSocket chatServerSocket,
+                            InetAddress clientAddress,
+                            int clientPort,
+                            Map<Integer, Integer> clientMap,
+                            HashMap<Integer, HashSet<Integer>> connectionsMap) {
+
+        if (!connectionsMap.get(clientId).contains(targetId)) {
+            System.out.println("[Client] ERROR: Client " + targetId + " is inactive");
+
+            sender.send(chatServerSocket,
+                    clientAddress,
+                    clientPort,
+                    "U dont have permission to chat with hime",
+                    100233);
+            return;
+        }
+
+        sender.send(chatServerSocket,
+                clientAddress,
+                clientMap.get(targetId),
+                msg,
+                122033);
+
+    }
 
 
 
-        public static void terminateChat(int id) {  }
+    public static void terminateChat(int id) {  }
 
     public static void displayActiveChats() {  }
 

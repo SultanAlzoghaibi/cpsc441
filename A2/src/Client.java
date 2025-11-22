@@ -209,6 +209,7 @@ public class Client {
                     return;
                 }
 
+
                 // 2. Parse the message
                 // Format: CONNECTION_REQUEST:FROM:<id>:SEQ:<num>
                 String[] parts = msg.split(":");

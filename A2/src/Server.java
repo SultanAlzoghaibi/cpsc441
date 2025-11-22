@@ -11,7 +11,7 @@ public class Server {
     int BufferLength = 1024;
     int maxNumberOfClients = 4;
 
-
+    HashMap<Integer, HashSet<Integer>> connectionsMap = new HashMap<>();
     HashMap<Integer, Integer> ClientIDtoPort = new HashMap<>();
 
 
@@ -31,6 +31,10 @@ public class Server {
     }
     public HashMap<Integer, Integer> getClientIDtoPort(){
         return ClientIDtoPort;
+    }
+
+    public HashMap<Integer, HashSet<Integer>> getConnectionsMap(){
+        return connectionsMap;
     }
 
     public void acceptConnections(){
@@ -54,17 +58,23 @@ public class Server {
                 InetAddress address = packet.getAddress();
                 int clientPort = packet.getPort();
                 Random rand = new Random();
-                int ClientID = rand.nextInt(numberOfClients);
+                int ClientID = rand.nextInt(10000);
+                ClientID = numberOfClients;
 
                 String[] tokens = msg.trim().split(":");
                 int ListenPort = Integer.parseInt(tokens[4]);
 
                 synchronized (ClientIDtoPort) {
                     ClientIDtoPort.put(ClientID, ListenPort);
+                    connectionsMap.put(ClientID, new HashSet<>());
                 }
 
                 System.out.println("client LPort: " + ListenPort);
-                ServerSideConnection ssc = new ServerSideConnection(serverSocket, ClientID, address, clientPort);
+                ServerSideConnection ssc = new ServerSideConnection(
+                        serverSocket,
+                        ClientID,
+                        address,
+                        clientPort);
                 Thread t = new Thread(ssc);
                 t.start();
 
@@ -149,7 +159,8 @@ public class Server {
                             chatServerSocket,
                             address,
                             clientPort,
-                            clientID
+                            clientID,
+                            getConnectionsMap()
                     );
                 } catch (SocketException e) {
                     throw new RuntimeException(e);
@@ -163,7 +174,11 @@ public class Server {
 
         }
 
-        public boolean sendReliableToClient(DatagramSocket socket, InetAddress clientAddress, int clientPort, String body, int seqNum) {
+        public boolean sendReliableToClient(DatagramSocket socket,
+                                            InetAddress clientAddress,
+                                            int clientPort,
+                                            String body,
+                                            int seqNum) {
             try {
                 String msg = body + ":SEQ:" + seqNum;
                 byte[] data = msg.getBytes();
