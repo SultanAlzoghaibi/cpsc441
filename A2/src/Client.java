@@ -79,6 +79,7 @@ public class Client {
                 while(true){
 
                     recieveMsg = receiveServerMsg(ServerReqsocket);
+
                     System.out.println(recieveMsg);
                     System.out.print("enter message to send to server: ");
                     String msg = "";
@@ -160,7 +161,7 @@ public class Client {
 
                 // 2. Convert to string
                 String msg = new String(packet.getData(), 0, packet.getLength());
-                System.out.println("[in receiveServerMsg] Received from server: " + msg);
+                //System.out.println("[in receiveServerMsg] Received from server: " + msg);
 
                 // ---------------- Parse sequence number ----------------
                 // Format expected: SOMETHING:SEQ:<num>
@@ -205,7 +206,7 @@ public class Client {
 
                     // 1. Receive the connection request (this already sends ACK)
                     String msg = receiveServerMsgWithPort(listenerSocket);
-                    System.out.println("WEEE GOT a message! type anything to view message..." );
+                    System.out.println("WEEE GOT a message!...  " );
                     if (msg == null) continue;
                     if(msg.startsWith("TERMINATE:")) {
                         String[] parts = msg.split(":");
@@ -228,9 +229,26 @@ public class Client {
                         continue;
                     }
 
+                    if (msg.startsWith("CONNECTION_WAS_ACCEPTED")) {
+                        // Format: CONNECTION_WAS_ACCEPTED:client <id> accepted
+                        String[] p = msg.split(":");
+                        String clientInfo = p[1]; // "client <id> accepted"
+                        System.out.println("[Client] Connection to " + clientInfo);
+                        continue;
+                    }
+
+                    if (msg.startsWith("CONNECTION_WAS_REJECTED")) {
+                        // Format: CONNECTION_WAS_REJECTED:client <id> rejected
+                        String[] p = msg.split(":");
+                        String clientInfo = p[1]; // "client<id>rejected"
+                        System.out.println("[Client] Connection request rejected by " + clientInfo);
+                        continue;
+                    }
+
+
                     if (!msg.startsWith("CONNECTION_REQUEST")) {
                         System.out.println("[Client] Unknown incoming message: " + msg);
-                        return;
+                        continue;
                     }
 
 
@@ -246,16 +264,18 @@ public class Client {
 
                     // 3. Ask user
 
-
+                    System.out.println(" its a connection attempt, type enter to view");
                     inputLock.lock();
                     String input = "CONNECTION_REJECT:FROM:";
 
                     try {
-                        System.out.print("Accept? (y/n): ");
+                        System.out.print("Accept? from client " + fromClientId + " (y/n): ");
                         input = sc.nextLine().trim().toLowerCase();
                     } finally {
                         inputLock.unlock();
                     }
+
+
 
 
                     // 4. Build reply

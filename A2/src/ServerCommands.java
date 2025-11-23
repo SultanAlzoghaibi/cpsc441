@@ -201,7 +201,7 @@ public class ServerCommands {
                 sender.send(chatServerSocket,
                         serverAddress,
                         clientMap.get(myClientId),
-                        "client" + targetId + "accepted",
+                        "CONNECTION_WAS_ACCEPTED:client " + targetId + " accepted",
                         seqNum);
 
 
@@ -214,7 +214,7 @@ public class ServerCommands {
                 sender.send(chatServerSocket,
                         serverAddress,
                         clientMap.get(myClientId),
-                        "client" + targetId + "rejected",
+                        "CONNECTION_WAS_REJECTED:client" + targetId + "rejected",
                         seqNum);
                 return;
             }
@@ -282,9 +282,7 @@ public class ServerCommands {
     ) {
 
         // 1. Check if chat exists
-        if (!connectionsMap.containsKey(clientId)
-                || !connectionsMap.get(clientId).contains(targetId)) {
-
+        if (!connectionsMap.get(clientId).contains(targetId)) {
             System.out.println("[Client] ERROR: No active chat with " + targetId);
             boolean delivered = sender.send(
                     chatServerSocket,
@@ -334,8 +332,19 @@ public class ServerCommands {
     }
 
     public static void displayActiveChats() {  }
+    public static void leaveApplication( ){};
 
-    public static void leaveApplication() {  }
+    public static void leaveApplication( ReliableSender sender,
+                                                    DatagramSocket chatServerSocket,
+                                                    InetAddress clientAddress,
+                                                    int clientPort,
+                                                    Map<Integer, Integer> clientMap
+
+
+
+    ) {
+
+    }
 
     public static void requestClientListFromServer( ReliableSender sender,
                                                     DatagramSocket chatServerSocket,

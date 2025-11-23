@@ -10,6 +10,7 @@ public class Server {
     DatagramSocket serverSocket;
     int BufferLength = 1024;
     int maxNumberOfClients = 4;
+    int idAssign = 0;
 
     HashMap<Integer, HashSet<Integer>> connectionsMap = new HashMap<>();
     HashMap<Integer, Integer> ClientIDtoPort = new HashMap<>();
@@ -49,6 +50,7 @@ public class Server {
                     continue;
                 }
                 numberOfClients++;
+                idAssign++;
                 if (numberOfClients > maxNumberOfClients){
                     System.out.println("Maximum number of connections reached");
                     numberOfClients--;
@@ -59,7 +61,8 @@ public class Server {
                 int clientPort = packet.getPort();
                 Random rand = new Random();
                 int ClientID = rand.nextInt(10000);
-                ClientID = numberOfClients;
+                ClientID = idAssign;
+
 
                 String[] tokens = msg.trim().split(":");
                 int ListenPort = Integer.parseInt(tokens[4]);
@@ -137,7 +140,7 @@ public class Server {
                     leave                       - Leave the application
                     Help                        - list out all the options
                     
-                    """;
+                    """ + "YOUR CLIENT ID = " + clientID ;
 
             didrecieve = sendReliableToClient(chatServerSocket, address, clientPort, msg, seqNum);
             while (true) {
