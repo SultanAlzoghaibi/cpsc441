@@ -332,7 +332,10 @@ public class ServerCommands {
     }
 
     public static void displayActiveChats() {  }
-    public static void leaveApplication( ){};
+    public static void leaveApplication( ){
+
+
+    };
 
     public static void leaveApplication( ReliableSender sender,
                                                     DatagramSocket chatServerSocket,

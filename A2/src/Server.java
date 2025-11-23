@@ -38,6 +38,13 @@ public class Server {
         return connectionsMap;
     }
 
+    public void setNumberOfClients(int numberOfClients){
+        this.numberOfClients = numberOfClients;
+    }
+    public void decreaseNumberOfCLients(){
+        this.numberOfClients--;
+    }
+
     public void acceptConnections(){
         try {
             System.out.println("--waiting connections A2--");

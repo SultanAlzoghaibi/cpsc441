@@ -211,6 +211,7 @@ public class Client {
                     if(msg.startsWith("TERMINATE:")) {
                         String[] parts = msg.split(":");
                         System.out.println(parts[1]);
+                        continue;
                     }
 
                     if (msg.startsWith("CHATFROM:")) {
