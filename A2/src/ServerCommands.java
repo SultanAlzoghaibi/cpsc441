@@ -93,7 +93,16 @@ public class ServerCommands {
                     System.out.println("Usage: terminate <client_id>");
                 } else {
                     int targetId = Integer.parseInt(tokens[1]);
-                    terminateChat(targetId);
+                    terminateChat(
+                            ourClientId,
+                            targetId,
+                            sender,
+                            chatServerSocket,
+                            clientAddress,
+                            clientMap,
+                            connectionsMap,
+                            clientPort
+                    );
                 }
                 break;
 
@@ -107,6 +116,26 @@ public class ServerCommands {
 
             case "list":
                 requestClientListFromServer(sender, chatServerSocket, clientAddress, clientPort, clientMap);
+
+                break;
+            case "help":
+                String helpMsg = """
+                    Welcome to the Chat System! Here are the available commands:
+                    
+                    connect <client_id>         - Connect to another client
+                    msg <client_id> <message>   - Send a message to a connected client
+                    terminate <client_id>       - Terminate chat with a client
+                    chats                       - Show active chats
+                    list                        - Request list of all online clients
+                    leave                       - Leave the application
+                    Help                        - list out all the options
+                    
+                    """;
+                sender.send(chatServerSocket,
+                        clientAddress,
+                        clientPort,
+                        helpMsg,
+                        120323);
 
                 break;
 
@@ -168,6 +197,13 @@ public class ServerCommands {
 
                 connectionsMap.get(myClientId).add(targetId);
                 connectionsMap.get(targetId).add(myClientId);
+                seqNum = rand.nextInt(10000);
+                sender.send(chatServerSocket,
+                        serverAddress,
+                        clientMap.get(myClientId),
+                        "client" + targetId + "accepted",
+                        seqNum);
+
 
 
                 return;
@@ -175,6 +211,11 @@ public class ServerCommands {
 
             if (reply.startsWith("CONNECTION_REJECT")) {
                 System.out.println("[Client] Connection rejected.");
+                sender.send(chatServerSocket,
+                        serverAddress,
+                        clientMap.get(myClientId),
+                        "client" + targetId + "rejected",
+                        seqNum);
                 return;
             }
 
@@ -229,7 +270,68 @@ public class ServerCommands {
 
 
 
-    public static void terminateChat(int id) {  }
+    public static void terminateChat(
+            int clientId,                      // YOU (the one terminating)
+            int targetId,                      // the other side
+            ReliableSender sender,
+            DatagramSocket chatServerSocket,
+            InetAddress clientAddress,
+            Map<Integer, Integer> clientMap,   // maps ClientID -> port
+            HashMap<Integer, HashSet<Integer>> connectionsMap,
+            int ourClientPort
+    ) {
+
+        // 1. Check if chat exists
+        if (!connectionsMap.containsKey(clientId)
+                || !connectionsMap.get(clientId).contains(targetId)) {
+
+            System.out.println("[Client] ERROR: No active chat with " + targetId);
+            boolean delivered = sender.send(
+                    chatServerSocket,
+                    clientAddress,
+                    ourClientPort,
+                    "[Client] ERROR: No active chat with " + targetId,
+                    99999
+            );
+
+            return;
+        }
+
+        // 2. Build termination message
+        int targetPort = clientMap.get(targetId);
+
+        //System.out.println("[Client] Sending termination to Client " + targetId +p" on port " + targetPort);
+
+        // 3. Send using reliable sender
+
+        boolean delivered = sender.send(
+                chatServerSocket,
+                clientAddress,
+                targetPort,
+                "TERMINATE:Chat with " + targetId + " has been terminated.",
+                99392
+        );
+
+        if (!delivered) {
+            System.out.println("[Client] ERROR: Could not deliver termination message.");
+            return;
+        }
+
+        // 4. Remove chat connection on both sides
+        connectionsMap.get(clientId).remove(targetId);
+        connectionsMap.get(targetId).remove(clientId);
+
+
+        // 5. Notify user
+        System.out.println("[Client] Chat with " + targetId + " has been terminated.");
+        sender.send(
+                chatServerSocket,
+                clientAddress,
+                ourClientPort,
+                "Chat with " + targetId + " has been terminated.",
+                93492
+        );
+    }
 
     public static void displayActiveChats() {  }
 

@@ -202,10 +202,15 @@ public class Client {
 
                 try {
 
+
                     // 1. Receive the connection request (this already sends ACK)
                     String msg = receiveServerMsgWithPort(listenerSocket);
-                    System.out.println("WEEE GOT A SOMTHING!!! " + msg);
+                    System.out.println("WEEE GOT a message! type anything to view message..." );
                     if (msg == null) continue;
+                    if(msg.startsWith("TERMINATE:")) {
+                        String[] parts = msg.split(":");
+                        System.out.println(parts[1]);
+                    }
 
                     if (msg.startsWith("CHATFROM:")) {
                         // Format: CHATFROM:<id>:<text>:SEQ:<num>:FROMPORT:<p>
