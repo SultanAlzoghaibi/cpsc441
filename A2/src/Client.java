@@ -197,70 +197,93 @@ public class Client {
         }
 
         public void incommingNewChat(DatagramSocket listenerSocket) {
-            try {
+            while (true) {
 
-                // 1. Receive the connection request (this already sends ACK)
-                String msg = receiveServerMsgWithPort(listenerSocket);
-                System.out.println("WEEE GOT A SOMTHING!!! " + msg);
-                if (msg == null) return;
-
-                if (!msg.startsWith("CONNECTION_REQUEST")) {
-                    System.out.println("[Client] Unknown incoming message: " + msg);
-                    return;
-                }
-
-
-                // 2. Parse the message
-                // Format: CONNECTION_REQUEST:FROM:<id>:SEQ:<num>
-                String[] parts = msg.split(":");
-                int fromClientId = Integer.parseInt(parts[2]);
-
-                //System.out.println("\n*** Incoming chat request ***");
-                //System.out.println("Client " + fromClientId + " wants to connect with you.");
-
-                // 3. Ask user
-
-
-                inputLock.lock();
-                String input = "CONNECTION_REJECT:FROM:";
 
                 try {
-                    System.out.print("Accept? (y/n): ");
-                    input = sc.nextLine().trim().toLowerCase();
-                }finally {
-                    inputLock.unlock();
+
+                    // 1. Receive the connection request (this already sends ACK)
+                    String msg = receiveServerMsgWithPort(listenerSocket);
+                    System.out.println("WEEE GOT A SOMTHING!!! " + msg);
+                    if (msg == null) continue;
+
+                    if (msg.startsWith("CHATFROM:")) {
+                        // Format: CHATFROM:<id>:<text>:SEQ:<num>:FROMPORT:<p>
+                        try {
+                            String[] parts = msg.split(":");
+                            int fromId = Integer.parseInt(parts[1]);
+                            String chatText = parts[2];
+
+                            System.out.println("\n[CHAT] Message from client " + fromId + ": " + chatText);
+
+                        } catch (Exception e) {
+                            System.out.println("[Client] ERROR parsing chat message: " + msg);
+                        }
+
+                        continue;
+                    }
+
+                    if (!msg.startsWith("CONNECTION_REQUEST")) {
+                        System.out.println("[Client] Unknown incoming message: " + msg);
+                        return;
+                    }
+
+
+
+
+                    // 2. Parse the message
+                    // Format: CONNECTION_REQUEST:FROM:<id>:SEQ:<num>
+                    String[] parts = msg.split(":");
+                    int fromClientId = Integer.parseInt(parts[2]);
+
+                    //System.out.println("\n*** Incoming chat request ***");
+                    //System.out.println("Client " + fromClientId + " wants to connect with you.");
+
+                    // 3. Ask user
+
+
+                    inputLock.lock();
+                    String input = "CONNECTION_REJECT:FROM:";
+
+                    try {
+                        System.out.print("Accept? (y/n): ");
+                        input = sc.nextLine().trim().toLowerCase();
+                    } finally {
+                        inputLock.unlock();
+                    }
+
+
+                    // 4. Build reply
+                    String reply;
+                    if (input.equals("y")) {
+                        reply = "CONNECTION_ACCEPT:FROM:" + fromClientId;
+                        System.out.println("[Client] You accepted the connection.");
+                    } else {
+                        reply = "CONNECTION_REJECT:FROM:" + fromClientId;
+                        System.out.println("[Client] You rejected the connection.");
+                    }
+
+                    // 5. Send reply using RDT
+
+                    int seq = new Random().nextInt(10000);
+
+                    InetAddress addr = InetAddress.getByName("localhost");
+
+
+                    String[] t = msg.split(":");
+                    int fromPort = Integer.parseInt(t[6]);
+                    System.out.println(fromPort);
+                    sendReliableToServer(listenerSocket, addr, fromPort, reply, seq);
+
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-
-
-                // 4. Build reply
-                String reply;
-                if (input.equals("y")) {
-                    reply = "CONNECTION_ACCEPT:FROM:" + fromClientId;
-                    System.out.println("[Client] You accepted the connection.");
-                } else {
-                    reply = "CONNECTION_REJECT:FROM:" + fromClientId;
-                    System.out.println("[Client] You rejected the connection.");
-                }
-
-                // 5. Send reply using RDT
-
-                int seq = new Random().nextInt(10000);
-
-                InetAddress addr = InetAddress.getByName("localhost");
-
-
-                String[] t = msg.split(":");
-                int fromPort = Integer.parseInt(t[6]);
-                System.out.println(fromPort);
-                sendReliableToServer(listenerSocket, addr, fromPort, reply, seq);
-
-            } catch (Exception e) {
-                e.printStackTrace();
             }
         }
 
         public String receiveServerMsgWithPort(DatagramSocket socket) {
             try {
+                socket.setSoTimeout(300000);
                 // 1. Receive packet
                 byte[] buffer = new byte[1024];
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);

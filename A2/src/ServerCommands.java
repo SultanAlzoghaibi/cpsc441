@@ -158,6 +158,8 @@ public class ServerCommands {
                 System.out.println("[Client] Connection established!");
 
                 connectionsMap.get(myClientId).add(targetId);
+                connectionsMap.get(targetId).add(myClientId);
+
 
                 return;
             }
@@ -199,14 +201,22 @@ public class ServerCommands {
                     100233);
             return;
         }
+        msg = "CHATFROM:" + clientId + ":" + msg;
+
 
         sender.send(chatServerSocket,
                 clientAddress,
                 clientMap.get(targetId),
                 msg,
                 122033);
-
+        System.out.println("sent to port: " +  clientMap.get(targetId));
+        sender.send(chatServerSocket,
+                clientAddress,
+                clientPort,
+                "Sent to client " + targetId,
+                122033);
     }
+
 
 
 
