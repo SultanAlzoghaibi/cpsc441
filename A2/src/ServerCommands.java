@@ -35,6 +35,7 @@ public class ServerCommands {
         String[] tokens = clean.trim().split(" ", 8); // max 3 parts
         String command = tokens[0].toLowerCase();
         System.out.println(" COMMAND: " + Arrays.toString(tokens));
+
         switch (command) {
             case "connect":
 
@@ -62,7 +63,15 @@ public class ServerCommands {
                     System.out.println("Usage: msg <client_id> <message>");
                 } else {
                     int targetId = Integer.parseInt(tokens[1]);
-                    String message = tokens[2];
+
+                    // Join all remaining tokens to preserve spaces in message
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 2; i < tokens.length; i++) {
+                        sb.append(tokens[i]);
+                        if (i < tokens.length - 1) sb.append(" ");
+                    }
+                    String message = sb.toString();
+
                     chat(
                             ourClientId,
                             targetId,
