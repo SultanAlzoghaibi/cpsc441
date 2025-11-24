@@ -5,10 +5,10 @@ import java.util.*;
 public class ServerCommands {
     static HashMap<Integer, HashSet<Integer>> connectionsMap = new HashMap<>();
     static ReliableSender sender;
-    static Map<Integer, Integer> clientMap;
+
     public static void handleCommand(
             String receiveMsg,
-            Map<Integer, Integer> clientMapPara,
+            Map<Integer, Integer> clientMap,
             ReliableSender senderPara, // <-- function pointe
             ReliableReceive receiver,
             DatagramSocket chatServerSocket,
@@ -19,7 +19,6 @@ public class ServerCommands {
     ) throws SocketException {
        connectionsMap = connectionsMapPara;
        sender = senderPara;
-       clientMap  = clientMapPara;
 
         //System.out.println(" HANDLING THE MSG: " + receiveMsg);
 
@@ -111,7 +110,14 @@ public class ServerCommands {
                 break;
 
             case "leave":
-                leaveApplication();
+                leaveApplication(
+                        sender,
+                        chatServerSocket,
+                        clientAddress,
+                        clientPort,
+                        clientMap,
+                        ourClientId
+                );
                 break;
 
             case "list":
@@ -337,16 +343,32 @@ public class ServerCommands {
 
     };
 
-    public static void leaveApplication( ReliableSender sender,
-                                                    DatagramSocket chatServerSocket,
-                                                    InetAddress clientAddress,
-                                                    int clientPort,
-                                                    Map<Integer, Integer> clientMap
-
-
-
+    public static void leaveApplication(
+            ReliableSender sender,
+            DatagramSocket chatServerSocket,
+            InetAddress clientAddress,
+            int clientPort,
+            Map<Integer, Integer> clientMap,
+            int id
     ) {
+        // 1. Remove client from server's active list
+        clientMap.remove(id);
 
+        // 2. Inform client that it has successfully left
+        String goodbye = "BYE: Client " + id + " has left the application.";
+        if (connectionsMap.containsKey(id)) {
+            connectionsMap.remove(id);
+        }
+
+        sender.send(
+                chatServerSocket,
+                clientAddress,
+                clientPort,
+                goodbye,
+                54321 // any seq
+        );
+
+        System.out.println("[Server] Client " + id + " has left. Cleaned up.");
     }
 
     public static void requestClientListFromServer( ReliableSender sender,

@@ -80,8 +80,14 @@ public class Client {
 
                     recieveMsg = receiveServerMsg(ServerReqsocket);
 
+
                     System.out.println(recieveMsg);
                     System.out.print("enter message to send to server: ");
+
+                    if(recieveMsg.startsWith("BYE:")){
+                        System.exit(0);
+                    }
+
                     String msg = "";
                     inputLock.lock();
                     try {
@@ -89,6 +95,7 @@ public class Client {
                     }finally {
                         inputLock.unlock();
                     }
+
 
                     sendReliableToServer(ServerReqsocket, serverAddress, serverReqSendingPort, msg, seqNum);
                     seqNum++;
@@ -99,6 +106,7 @@ public class Client {
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
+
         }
         public boolean sendReliableToServer(DatagramSocket socket, InetAddress serverAddr, int serverPort, String body, int seqNum) {
             try {

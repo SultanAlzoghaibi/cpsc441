@@ -56,9 +56,9 @@ public class Server {
                 if (!msg.startsWith("REGISTER:")) {
                     continue;
                 }
-                numberOfClients++;
+                numberOfClients = ClientIDtoPort.size();
                 idAssign++;
-                if (numberOfClients > maxNumberOfClients){
+                if (numberOfClients >= maxNumberOfClients){
                     System.out.println("Maximum number of connections reached");
                     numberOfClients--;
                     continue;
