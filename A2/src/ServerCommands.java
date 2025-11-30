@@ -22,7 +22,6 @@ public class ServerCommands {
 
         //System.out.println(" HANDLING THE MSG: " + receiveMsg);
 
-        // Your switch-case logic here
         String clean = receiveMsg.trim();
 
 // Remove SEQ portion if present
